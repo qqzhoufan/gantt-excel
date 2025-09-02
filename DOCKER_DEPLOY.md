@@ -8,7 +8,7 @@
 
 ### 1. 在Docker Hub创建仓库
 1. 访问 https://hub.docker.com
-2. 创建仓库：`qqzhoufan/gantt-excel`
+2. 创建仓库：`zhouwl/gantt-excel`
 
 ### 2. 配置GitHub Secrets
 在GitHub仓库设置中添加：
@@ -36,7 +36,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #### 方法二：直接使用Docker
 ```bash
 # 拉取镜像
-docker pull qqzhoufan/gantt-excel:latest
+docker pull zhouwl/gantt-excel:latest
 
 # 启动数据库
 docker run -d \
@@ -55,7 +55,7 @@ docker run -d \
   -e DB_PASSWORD=your_password \
   -p 9897:9897 \
   -p 9898:9898 \
-  qqzhoufan/gantt-excel:latest
+  zhouwl/gantt-excel:latest
 ```
 
 ## 🔧 服务架构

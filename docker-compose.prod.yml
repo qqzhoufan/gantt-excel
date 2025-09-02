@@ -23,7 +23,7 @@ services:
       - gantt-network
 
   app:
-    image: qqzhoufan/gantt-excel:latest
+    image: zhouwl/gantt-excel:latest
     container_name: gantt-excel-app-prod
     ports:
       - "9897:9897"  # 前端端口
