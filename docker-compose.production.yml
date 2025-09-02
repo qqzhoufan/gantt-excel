@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: gantt-excel-postgres
+    environment:
+      POSTGRES_DB: gantt_excel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password_here}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gantt-network
+
+  app:
+    image: zhouwl/gantt-excel:latest
+    container_name: gantt-excel-app
+    ports:
+      - "9897:9897"  # 前端端口
+      - "9898:9898"  # 后端端口
+    environment:
+      - PORT=9898
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - DB_NAME=gantt_excel
+      - DB_SSLMODE=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - gantt-network
+
+volumes:
+  postgres_data:
+
+networks:
+  gantt-network:
+    driver: bridge
