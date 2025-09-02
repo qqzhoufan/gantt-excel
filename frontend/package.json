@@ -1,0 +1,27 @@
+{
+  "name": "gantt-excel-frontend",
+  "version": "1.0.0",
+  "description": "咸鱼甘特图前端应用",
+  "scripts": {
+    "dev": "vite --port 9897",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4",
+    "axios": "^1.5.0",
+    "element-plus": "^2.3.9",
+    "@element-plus/icons-vue": "^2.1.0",
+    "gantt-schedule-timeline-calendar": "^3.0.0",
+    "dayjs": "^1.11.9",
+    "pinia": "^2.1.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.3.4",
+    "vite": "^4.4.9",
+    "eslint": "^8.47.0",
+    "eslint-plugin-vue": "^9.17.0"
+  }
+}

@@ -1,0 +1,96 @@
+# 依赖文件
+node_modules/
+vendor/
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率目录
+coverage/
+.nyc_output
+
+# 构建输出
+dist/
+build/
+out/
+
+# 临时文件
+.tmp/
+.temp/
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker相关
+.dockerignore
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 备份文件
+*.bak
+*.backup
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# 证书文件
+*.pem
+*.key
+*.crt
+
+# 本地配置文件
+config/local.json
+config/local.yml
+
+# 测试文件
+test-results/
+coverage/
+
+# 前端构建缓存
+.cache/
+.parcel-cache/
+
+# Go相关
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
