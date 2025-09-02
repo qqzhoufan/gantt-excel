@@ -2,10 +2,17 @@
 FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci --only=production
 
+# 复制package文件
+COPY frontend/package*.json ./
+
+# 安装依赖（包括devDependencies，因为构建需要）
+RUN npm install
+
+# 复制前端源码
 COPY frontend/ ./
+
+# 构建前端
 RUN npm run build
 
 FROM golang:1.19-alpine AS backend-builder
