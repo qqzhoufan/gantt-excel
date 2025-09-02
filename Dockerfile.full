@@ -1,0 +1,40 @@
+# 多阶段构建 - 完整应用镜像
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+
+COPY frontend/ ./
+RUN npm run build
+
+FROM golang:1.19-alpine AS backend-builder
+
+WORKDIR /app/backend
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+
+FROM alpine:latest
+
+# 安装必要的工具
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
+
+# 复制后端二进制文件
+COPY --from=backend-builder /app/backend/main .
+COPY --from=backend-builder /app/backend/env.example .env
+
+# 复制前端构建文件
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# 复制数据库初始化脚本
+COPY database/init.sql ./database/
+
+# 暴露端口
+EXPOSE 9898
+
+# 启动命令
+CMD ["./main"]
