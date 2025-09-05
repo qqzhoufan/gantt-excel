@@ -6,6 +6,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import './utils/health-check' // 导入健康检查
 
 const app = createApp(App)
 
