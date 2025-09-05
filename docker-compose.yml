@@ -2,66 +2,59 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
-    container_name: gantt-excel-postgres
+    image: postgres:15-alpine
+    container_name: gantt-postgres
     environment:
       POSTGRES_DB: gantt_excel
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
-    networks:
-      - gantt-network
 
   backend:
-    build:
+    build: 
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: gantt-excel-backend
-    ports:
-      - "9898:9898"
+    container_name: gantt-backend
     environment:
-      - PORT=9898
+      - PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASSWORD=password
+      - DB_PASSWORD=${DB_PASSWORD:-password}
       - DB_NAME=gantt_excel
-      - DB_SSLMODE=disable
+      - DB_SSL_MODE=disable
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - gantt-network
 
   frontend:
-    build:
+    build: 
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: gantt-excel-frontend
+    container_name: gantt-frontend
     ports:
-      - "9897:9897"
-    environment:
-      - VITE_API_BASE_URL=/api/v1
+      - "3000:3000"
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - gantt-network
+    environment:
+      - NODE_ENV=production
 
 volumes:
   postgres_data:
+    driver: local
 
 networks:
-  gantt-network:
-    driver: bridge
+  default:
+    name: gantt-network
