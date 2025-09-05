@@ -132,37 +132,114 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # 检查docker-compose
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+echo "📦 检查Docker Compose..."
+
+# 首先检查Docker内置的compose命令
+if docker compose version &> /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Docker Compose (内置版本)已可用${NC}"
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    # 检查现有的docker-compose是否可用
+    if docker-compose version &> /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Docker Compose (独立版本)已可用${NC}"
+        COMPOSE_CMD="docker-compose"
+    else
+        echo -e "${YELLOW}⚠️  现有docker-compose不可用，重新安装...${NC}"
+        $SUDO rm -f /usr/local/bin/docker-compose
+        COMPOSE_CMD=""
+    fi
+else
+    COMPOSE_CMD=""
+fi
+
+# 如果没有可用的compose命令，尝试安装
+if [ -z "$COMPOSE_CMD" ]; then
     echo "📦 安装Docker Compose..."
     
-    # 检测是否支持新版docker compose
-    if docker compose version &> /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Docker Compose (内置版本)已可用${NC}"
-    else
-        # 安装独立版本的docker-compose
+    # 优先尝试使用包管理器安装
+    case $PKG_MANAGER in
+        apt)
+            if $SUDO apt install -y docker-compose-plugin 2>/dev/null; then
+                echo -e "${GREEN}✅ 通过APT安装Docker Compose Plugin${NC}"
+                COMPOSE_CMD="docker compose"
+            fi
+            ;;
+        yum|dnf)
+            if $SUDO $PKG_MANAGER install -y docker-compose-plugin 2>/dev/null; then
+                echo -e "${GREEN}✅ 通过$PKG_MANAGER安装Docker Compose Plugin${NC}"
+                COMPOSE_CMD="docker compose"
+            fi
+            ;;
+    esac
+    
+    # 如果包管理器安装失败，尝试下载二进制文件
+    if [ -z "$COMPOSE_CMD" ]; then
+        echo "尝试下载Docker Compose二进制文件..."
         COMPOSE_VERSION="v2.24.0"
+        
         case $ARCH in
-            x86_64|amd64)
+            x86_64)
                 COMPOSE_ARCH="x86_64"
                 ;;
-            aarch64|arm64)
+            aarch64)
                 COMPOSE_ARCH="aarch64"
+                ;;
+            *)
+                echo -e "${RED}❌ 不支持的架构: $ARCH${NC}"
+                exit 1
                 ;;
         esac
         
-        $SUDO curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}" -o /usr/local/bin/docker-compose
-        $SUDO chmod +x /usr/local/bin/docker-compose
-        echo -e "${GREEN}✅ Docker Compose安装完成${NC}"
+        COMPOSE_URL="https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}"
+        
+        if $SUDO curl -L "$COMPOSE_URL" -o /usr/local/bin/docker-compose 2>/dev/null; then
+            $SUDO chmod +x /usr/local/bin/docker-compose
+            
+            # 验证下载的文件是否可执行
+            if /usr/local/bin/docker-compose version &> /dev/null; then
+                echo -e "${GREEN}✅ Docker Compose二进制文件安装完成${NC}"
+                COMPOSE_CMD="docker-compose"
+            else
+                echo -e "${RED}❌ Docker Compose二进制文件不兼容${NC}"
+                $SUDO rm -f /usr/local/bin/docker-compose
+            fi
+        fi
+    fi
+    
+    # 最后尝试：使用pip安装旧版本docker-compose
+    if [ -z "$COMPOSE_CMD" ]; then
+        echo "尝试使用pip安装docker-compose..."
+        
+        # 安装pip
+        case $PKG_MANAGER in
+            apt)
+                $SUDO apt install -y python3-pip
+                ;;
+            yum|dnf)
+                $SUDO $PKG_MANAGER install -y python3-pip
+                ;;
+        esac
+        
+        if command -v pip3 &> /dev/null; then
+            $SUDO pip3 install docker-compose
+            if command -v docker-compose &> /dev/null; then
+                echo -e "${GREEN}✅ 通过pip安装docker-compose完成${NC}"
+                COMPOSE_CMD="docker-compose"
+            fi
+        fi
+    fi
+    
+    # 如果所有方法都失败了
+    if [ -z "$COMPOSE_CMD" ]; then
+        echo -e "${RED}❌ 无法安装Docker Compose${NC}"
+        echo "请手动安装Docker Compose后重新运行脚本"
+        exit 1
     fi
 fi
 
 # 显示Docker版本信息
 echo "Docker版本: $(docker --version)"
-if command -v docker-compose &> /dev/null; then
-    echo "Docker Compose版本: $(docker-compose --version)"
-else
-    echo "Docker Compose版本: $(docker compose version)"
-fi
+echo "Docker Compose版本: $($COMPOSE_CMD version)"
 
 # 项目目录
 PROJECT_DIR="/opt/gantt-excel"
@@ -275,11 +352,7 @@ fi
 
 # 停止现有服务
 echo -e "\n${BLUE}🛑 停止现有服务...${NC}"
-if command -v docker-compose &> /dev/null; then
-    docker-compose down 2>/dev/null || true
-else
-    docker compose down 2>/dev/null || true
-fi
+$COMPOSE_CMD down 2>/dev/null || true
 
 # 构建和启动服务
 echo -e "\n${BLUE}🏗️ 构建和启动服务...${NC}"
@@ -289,13 +362,7 @@ echo "这可能需要几分钟时间，请耐心等待..."
 export DB_PASSWORD
 export ADMIN_PASSWORD
 
-# 选择compose命令
-COMPOSE_CMD="docker-compose"
-if ! command -v docker-compose &> /dev/null; then
-    COMPOSE_CMD="docker compose"
-fi
-
-# 构建并启动
+# 构建并启动 (COMPOSE_CMD已在前面定义)
 $COMPOSE_CMD up -d --build
 
 # 等待服务启动
