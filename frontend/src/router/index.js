@@ -3,6 +3,7 @@ import ProjectList from '../views/ProjectList.vue'
 import ProjectDetail from '../views/ProjectDetail.vue'
 import ProjectNew from '../views/ProjectNew.vue'
 import PasswordAuth from '../components/PasswordAuth.vue'
+import GanttTest from '../views/GanttTest.vue'
 
 const routes = [
   {
@@ -28,6 +29,12 @@ const routes = [
     component: ProjectDetail,
     props: true,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/test/gantt',
+    name: 'GanttTest',
+    component: GanttTest,
+    meta: { requiresAuth: false }
   }
 ]
 

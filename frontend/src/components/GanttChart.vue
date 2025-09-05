@@ -396,46 +396,63 @@ export default {
       console.log('时间轴调试:', {
         projectStart: start.format('YYYY-MM-DD'),
         projectEnd: end.format('YYYY-MM-DD'),
-        cellWidth
+        cellWidth,
+        viewMode: viewMode.value
       })
       
       let current = start
-      // 修复：只包含到结束日期，不包含结束日期之后
-      while (current.isBefore(end) || current.isSame(end, 'day')) {
-        let label = ''
-        let subtitle = ''
-        let key = ''
-        let isWeekend = false
-        let isToday = false
-        
-        switch (viewMode.value) {
-          case 'day':
-            label = current.format('MM/DD')
-            subtitle = current.format('ddd')
-            key = current.format('YYYY-MM-DD')
-            isWeekend = current.day() === 0 || current.day() === 6
-            isToday = current.isSame(today, 'day')
+      
+      switch (viewMode.value) {
+        case 'day':
+          // 日视图：包含开始日期到结束日期的所有天数
+          while (current.isBefore(end) || current.isSame(end, 'day')) {
+            const label = current.format('MM/DD')
+            const subtitle = current.format('ddd')
+            const key = current.format('YYYY-MM-DD')
+            const isWeekend = current.day() === 0 || current.day() === 6
+            const isToday = current.isSame(today, 'day')
+            
+            dates.push({ label, subtitle, key, isWeekend, isToday })
             current = current.add(1, 'day')
-            break
-          case 'week':
+          }
+          break
+          
+        case 'week':
+          // 周视图：从包含开始日期的周开始，到包含结束日期的周结束
+          const startWeek = start.startOf('week')
+          const endWeek = end.startOf('week')
+          current = startWeek
+          
+          while (current.isBefore(endWeek) || current.isSame(endWeek, 'week')) {
             const weekStart = current.startOf('week')
             const weekEnd = current.endOf('week')
-            label = `${weekStart.format('MM/DD')}周`
-            subtitle = `${weekStart.format('MM/DD')} - ${weekEnd.format('MM/DD')}`
-            key = current.format('YYYY-WW')
+            const label = `${weekStart.format('MM/DD')}周`
+            const subtitle = `${weekStart.format('MM/DD')} - ${weekEnd.format('MM/DD')}`
+            const key = current.format('YYYY-WW')
+            
+            dates.push({ label, subtitle, key, isWeekend: false, isToday: false })
             current = current.add(1, 'week')
-            break
-          case 'month':
-            label = current.format('MM月')
-            subtitle = current.format('YYYY')
-            key = current.format('YYYY-MM')
+          }
+          break
+          
+        case 'month':
+          // 月视图：从包含开始日期的月开始，到包含结束日期的月结束
+          const startMonth = start.startOf('month')
+          const endMonth = end.startOf('month')
+          current = startMonth
+          
+          while (current.isBefore(endMonth) || current.isSame(endMonth, 'month')) {
+            const label = current.format('MM月')
+            const subtitle = current.format('YYYY')
+            const key = current.format('YYYY-MM')
+            
+            dates.push({ label, subtitle, key, isWeekend: false, isToday: false })
             current = current.add(1, 'month')
-            break
-        }
-        
-        dates.push({ label, subtitle, key, isWeekend, isToday })
+          }
+          break
       }
       
+      console.log('生成的时间轴单元格数量:', dates.length)
       return dates
     })
     
@@ -446,44 +463,77 @@ export default {
     
     // 获取甘特图条样式
     const getBarStyle = (item) => {
-      if (!project.value.start_date || !item.start_date || !item.end_date) {
+      if (!project.value.start_date || !project.value.end_date || !item.start_date || !item.end_date) {
         return { display: 'none' }
       }
       
       const projectStart = dayjs(project.value.start_date)
-      const itemStart = dayjs(item.start_date)
-      const itemEnd = dayjs(item.end_date)
+      const projectEnd = dayjs(project.value.end_date)
+      let itemStart = dayjs(item.start_date)
+      let itemEnd = dayjs(item.end_date)
       
-      // 计算位置和宽度
-      const startOffset = itemStart.diff(projectStart, 'day')
-      const duration = itemEnd.diff(itemStart, 'day') + 1 // 包含结束日期
+      // 确保任务/阶段时间在项目范围内
+      if (itemStart.isBefore(projectStart)) {
+        itemStart = projectStart
+      }
+      if (itemEnd.isAfter(projectEnd)) {
+        itemEnd = projectEnd
+      }
+      
+      // 如果调整后的开始时间晚于结束时间，隐藏该条
+      if (itemStart.isAfter(itemEnd)) {
+        return { display: 'none' }
+      }
       
       let left = 0
       let width = 0
       
       switch (viewMode.value) {
         case 'day':
-          left = startOffset * cellWidth
+          // 日视图：精确计算天数偏移
+          const startOffset = itemStart.diff(projectStart, 'day')
+          const duration = itemEnd.diff(itemStart, 'day') + 1 // 包含结束日期
+          left = Math.max(0, startOffset) * cellWidth
           width = duration * cellWidth
           break
+          
         case 'week':
-          left = Math.floor(startOffset / 7) * cellWidth
-          width = Math.ceil(duration / 7) * cellWidth
+          // 周视图：计算周偏移，考虑实际的周边界
+          const projectStartWeek = projectStart.startOf('week')
+          const itemStartWeek = itemStart.startOf('week')
+          const itemEndWeek = itemEnd.startOf('week')
+          
+          const weekStartOffset = itemStartWeek.diff(projectStartWeek, 'week')
+          const weekDuration = itemEndWeek.diff(itemStartWeek, 'week') + 1
+          
+          left = Math.max(0, weekStartOffset) * cellWidth
+          width = weekDuration * cellWidth
           break
+          
         case 'month':
-          left = Math.floor(startOffset / 30) * cellWidth
-          width = Math.ceil(duration / 30) * cellWidth
+          // 月视图：计算月偏移，考虑实际的月边界
+          const projectStartMonth = projectStart.startOf('month')
+          const itemStartMonth = itemStart.startOf('month')
+          const itemEndMonth = itemEnd.startOf('month')
+          
+          const monthStartOffset = itemStartMonth.diff(projectStartMonth, 'month')
+          const monthDuration = itemEndMonth.diff(itemStartMonth, 'month') + 1
+          
+          left = Math.max(0, monthStartOffset) * cellWidth
+          width = monthDuration * cellWidth
           break
       }
       
       // 调试信息
       console.log('甘特图条调试:', {
         itemName: item.name,
+        viewMode: viewMode.value,
+        originalStart: dayjs(item.start_date).format('YYYY-MM-DD'),
+        originalEnd: dayjs(item.end_date).format('YYYY-MM-DD'),
+        adjustedStart: itemStart.format('YYYY-MM-DD'),
+        adjustedEnd: itemEnd.format('YYYY-MM-DD'),
         projectStart: projectStart.format('YYYY-MM-DD'),
-        itemStart: itemStart.format('YYYY-MM-DD'),
-        itemEnd: itemEnd.format('YYYY-MM-DD'),
-        startOffset,
-        duration,
+        projectEnd: projectEnd.format('YYYY-MM-DD'),
         left,
         width,
         cellWidth
@@ -793,16 +843,8 @@ export default {
 
 .gantt-timeline {
   min-width: 1000px;
-}
-
-.timeline-header {
   display: flex;
-  background: #F5F7FA;
-  border-bottom: 2px solid #DCDFE6;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  align-items: stretch;
+  flex-direction: column;
 }
 
 .task-column {
@@ -826,19 +868,17 @@ export default {
   position: relative;
   min-height: 60px;
   align-items: stretch;
-  margin-left: 0;
-  padding-left: 0;
 }
 
 .date-cell {
-  padding: 12px 8px;
-  text-align: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-right: 1px solid #EBEEF5;
+  text-align: center;
+  padding: 12px 8px;
   font-size: 12px;
   color: #606266;
   background: #F5F7FA;
-  flex-shrink: 0;
-  box-sizing: border-box;
 }
 
 .date-cell.weekend {
@@ -1059,33 +1099,81 @@ export default {
   background: #A4A9B0;
 }
 
-/* 强制垂直居中对齐 */
+/* 强化时间轴对齐 */
+.timeline-header {
+  display: flex;
+  background: #F5F7FA;
+  border-bottom: 2px solid #DCDFE6;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  align-items: stretch;
+}
+
+.timeline-header .task-column {
+  flex-shrink: 0;
+  width: 300px;
+  box-sizing: border-box;
+}
+
+.timeline-header .dates-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+/* 强化甘特图内容对齐 */
+.gantt-content .gantt-row {
+  display: flex;
+  align-items: center;
+  min-height: 60px;
+}
+
+.gantt-content .task-column {
+  flex-shrink: 0;
+  width: 300px;
+  box-sizing: border-box;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+
+.gantt-content .dates-container {
+  display: flex;
+  flex: 1;
+  position: relative;
+  min-height: 60px;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 确保甘特图条精确对齐 */
+.gantt-bar {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 2 !important;
+  box-sizing: border-box;
+}
+
+
+.date-cell:first-child {
+  margin-left: 0;
+  border-left: none;
+}
+
+.date-cell:last-child {
+  border-right: none;
+}
+
+
+/* 修复垂直对齐问题 */
 .gantt-row .task-column,
 .gantt-row .task-column .stage-info,
 .gantt-row .task-column .task-info {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
-}
-
-/* 确保甘特图条与日期列对齐 */
-.gantt-content .dates-container {
-  position: relative !important;
-  left: 0 !important;
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-}
-
-.gantt-bar {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  z-index: 2 !important;
-}
-
-/* 确保日期单元格从0开始 */
-.date-cell:first-child {
-  margin-left: 0 !important;
-  padding-left: 8px !important;
 }
 </style>
