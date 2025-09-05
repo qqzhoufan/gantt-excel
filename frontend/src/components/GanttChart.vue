@@ -492,9 +492,16 @@ export default {
         case 'day':
           // 日视图：精确计算天数偏移
           const startOffset = itemStart.diff(projectStart, 'day')
-          const duration = itemEnd.diff(itemStart, 'day') + 1 // 包含结束日期
+          // 修复：正确计算包含结束日期的持续时间
+          let duration = itemEnd.diff(itemStart, 'day') + 1 // 包含结束日期
+          
+          // 确保不超出项目范围
+          const maxEndOffset = projectEnd.diff(projectStart, 'day') + 1
+          const actualEndOffset = Math.min(startOffset + duration, maxEndOffset)
+          duration = actualEndOffset - startOffset
+          
           left = Math.max(0, startOffset) * cellWidth
-          width = duration * cellWidth
+          width = Math.max(duration * cellWidth, cellWidth) // 至少显示一天
           break
           
         case 'week':
@@ -534,9 +541,12 @@ export default {
         adjustedEnd: itemEnd.format('YYYY-MM-DD'),
         projectStart: projectStart.format('YYYY-MM-DD'),
         projectEnd: projectEnd.format('YYYY-MM-DD'),
+        startOffset: viewMode.value === 'day' ? itemStart.diff(projectStart, 'day') : null,
+        duration: viewMode.value === 'day' ? itemEnd.diff(itemStart, 'day') + 1 : null,
         left,
         width,
-        cellWidth
+        cellWidth,
+        widthInDays: width / cellWidth
       })
       
       return {
@@ -836,13 +846,16 @@ export default {
 }
 
 .gantt-container {
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
   max-height: 600px;
+  width: 100%;
+  position: relative;
 }
 
 .gantt-timeline {
-  min-width: 1000px;
+  min-width: max-content;
+  width: fit-content;
   display: flex;
   flex-direction: column;
 }

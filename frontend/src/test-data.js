@@ -108,6 +108,36 @@ export const testGanttData = {
           assignee: { name: "周九" }
         }
       ]
+    },
+    {
+      id: 4,
+      name: "时间边界测试阶段",
+      start_date: "2024-09-02",
+      end_date: "2024-09-06", // 周一到周五，应该显示5天
+      progress: 50,
+      status: "in_progress",
+      tasks: [
+        {
+          id: 8,
+          name: "周一到周五任务",
+          start_date: "2024-09-02", // 周一
+          end_date: "2024-09-06",   // 周五
+          progress: 50,
+          status: "in_progress",
+          priority: "medium",
+          assignee: { name: "测试员" }
+        },
+        {
+          id: 9,
+          name: "单日任务",
+          start_date: "2024-09-10",
+          end_date: "2024-09-10", // 同一天开始结束
+          progress: 100,
+          status: "completed",
+          priority: "low",
+          assignee: { name: "测试员" }
+        }
+      ]
     }
   ]
 }

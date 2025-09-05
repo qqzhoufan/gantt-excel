@@ -836,13 +836,18 @@ func drawGanttBar(f *excelize.File, sheetName string, startDate, endDate, projec
 		return
 	}
 
-	// 计算开始和结束列
-	startCol := int(startDate.Sub(projectStart).Hours()/24) + 1
-	endCol := int(endDate.Sub(projectStart).Hours()/24) + 1
-
+	// 修复：正确计算开始和结束列
+	// 日期列从第2列开始（B列），A列是任务名称
+	dayOffset := int(startDate.Sub(projectStart).Hours() / 24)
+	startCol := dayOffset + 2 // +2是因为A列是任务名，从B列开始是日期
+	
+	// 计算结束列，确保包含结束日期
+	endDayOffset := int(endDate.Sub(projectStart).Hours() / 24)
+	endCol := endDayOffset + 2 // 结束日期对应的列
+	
 	// 确保列号有效
-	if startCol < 1 {
-		startCol = 1
+	if startCol < 2 {
+		startCol = 2
 	}
 	if endCol < startCol {
 		endCol = startCol
